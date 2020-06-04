@@ -1,25 +1,32 @@
-node {
-
-     def app
-     stage('clone repository') {
-         checkout scm
-     }
-
-     stage('build image') {
-         app = docker.build ("ankababu/mvn-hello-world") 
-     }
-     
-     stage('test image') {
-         app.inside {
-            echo "tests done"
-         }
-     }
-
-     stage('push image') {
-        docker.withRegistry('https://registry.hub.docker.com', 'docker-hub') {
-              app.push("${env.BUILD_NUMBER}")
-              app.push("latest")
+pipeline {
+  environment {
+    registry = "ankababu/mvn-hello-world"
+    registryCredential = 'docker-hub'
+    dockerImage = ''
+  }
+  agent any
+  stages {
+    stage('Cloning Git') {
+      steps {
+        git 'https://github.com/ankababug/webapp.git'
+      }
+    }
+    stage('Building image') {
+      steps{
+        script {
+          dockerImage = docker.build registry + ":$BUILD_NUMBER"
         }
-           echo "trying to push image to docker hub"
-     }
+      }
+    }
+    stage('Deploy Image') {
+      steps{
+        script {
+          docker.withRegistry( '', registryCredential ) {
+            dockerImage.push()
+          }
+        }
+      }
+    }
+    
+  }
 }
